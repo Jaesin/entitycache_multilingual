@@ -1,0 +1,8 @@
+name = Entity Cache Multilingual
+description = Provides caching per language for entitycache.
+
+core = 7.x
+package = Performance and scalability
+dependencies[] = entitycache
+
+files[] = entitycache_multilingual.entitycachemlcontrollerhelper.inc

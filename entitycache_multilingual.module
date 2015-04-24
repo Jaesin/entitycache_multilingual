@@ -1,0 +1,64 @@
+<?php
+
+/**
+ * @file
+ * Adds multilingual support for the entitycache module.
+ */
+
+/**
+ * Implements hook_entitycache_reset.
+ */
+function entitycache_multilingual_entitycache_reset($entity_ids = NULL, $entity_type) {
+  // Loop through all ids.
+  foreach ($entity_ids as $id) {
+    // Use the wildcard flag to clear the cache for all languages. e.g. 123_en, 123_fr.
+    cache_clear_all($id, 'cache_entity_' . $entity_type, TRUE);
+  }
+}
+
+/**
+ * Implements hook_entitycache_load.
+ */
+function entitycache_multilingual_entitycache_load(&$entities = NULL, $entity_type) {
+  global $language;
+  $supported_types = entitycache_multilingual_supported_core_entities();
+
+  // Check that a language is set and type is supported.
+  if (in_array($entity_type, array_keys($supported_types)) && !empty($language->language) && $language->language !== LANGUAGE_NONE) {
+    $language_ids = array();
+    foreach ($entities as $id=>$entity) {
+      if (empty($entity->entitycache_language) || $entity->entitycache_language != $language->language) {
+        $language_ids[] = "{$id}_{$language->language}";
+      }
+    }
+    if (!empty($language_ids)) {
+      $cached = EntityCacheMLControllerHelper::entityCacheGet(entity_get_controller($entity_type), $language_ids);
+      foreach ($entities as $id => $item) {
+        $entities[$id] = !empty($cached["{$id}_{$language->language}"]) ? $cached["{$id}_{$language->language}"] : $entities[$id];
+      }
+    }
+  }
+}
+
+
+/**
+ * Helper function to list all supported core entities.
+ *
+ * @return
+ *   An array of core entities.
+ */
+function entitycache_multilingual_supported_core_entities() {
+  // Use static caching.
+  $return = &drupal_static(__FUNCTION__);
+  // Just return the value is statically cached.
+  if (!empty($return)) {
+    return $return;
+  }
+
+  // Get the set from the entitycache module.
+  $return = entitycache_supported_core_entities();
+  // Strip out any entity types that have multilingual caching disabled.
+  $return = array_diff_key($return, drupal_map_assoc(variable_get('entitycache_multilingual_disabled_entity_types', array())));
+
+  return $return;
+}
